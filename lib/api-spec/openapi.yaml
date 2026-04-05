@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Employee Performance Prediction System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: prediction
+    description: ML prediction operations
+  - name: analytics
+    description: Analytics and reporting
 paths:
   /healthz:
     get:
@@ -24,6 +28,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /predict:
+    post:
+      operationId: predictPerformance
+      tags: [prediction]
+      summary: Predict employee performance
+      description: Uses ML model to predict employee performance score and category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+      responses:
+        "200":
+          description: Prediction result with insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics:
+    get:
+      operationId: getAnalytics
+      tags: [analytics]
+      summary: Get performance analytics
+      description: Returns performance distribution data and charts
+      responses:
+        "200":
+          description: Analytics data with distribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsData"
+
+  /analytics/history:
+    get:
+      operationId: getPredictionHistory
+      tags: [analytics]
+      summary: Get prediction history
+      description: Returns history of past predictions for analytics
+      responses:
+        "200":
+          description: List of past predictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionHistoryList"
+
+  /analytics/insights:
+    get:
+      operationId: getWorkforceInsights
+      tags: [analytics]
+      summary: Get workforce insights summary
+      description: Returns aggregate workforce performance insights for HR managers
+      responses:
+        "200":
+          description: Workforce insights summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkforceInsights"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +113,238 @@ components:
       required:
         - status
 
+    EmployeeInput:
+      type: object
+      properties:
+        age:
+          type: number
+          description: Employee age in years
+          minimum: 18
+          maximum: 70
+        yearsAtCompany:
+          type: number
+          description: Number of years at the company
+          minimum: 0
+          maximum: 50
+        trainingHours:
+          type: number
+          description: Training hours completed
+          minimum: 0
+        projectsHandled:
+          type: number
+          description: Number of projects handled
+          minimum: 0
+        workHours:
+          type: number
+          description: Average weekly work hours
+          minimum: 0
+        overtimeHours:
+          type: number
+          description: Average weekly overtime hours
+          minimum: 0
+        satisfactionScore:
+          type: number
+          description: Employee satisfaction score (1-10)
+          minimum: 1
+          maximum: 10
+        salary:
+          type: number
+          description: Annual salary in USD
+          minimum: 0
+      required:
+        - age
+        - yearsAtCompany
+        - trainingHours
+        - projectsHandled
+        - workHours
+        - overtimeHours
+        - satisfactionScore
+        - salary
+
+    PredictionResult:
+      type: object
+      properties:
+        performanceScore:
+          type: number
+          description: Predicted performance score (0-100)
+        performanceCategory:
+          type: string
+          enum: [High, Medium, Low]
+          description: Performance category
+        confidence:
+          type: number
+          description: Model confidence (0-1)
+        insights:
+          type: array
+          items:
+            type: string
+          description: HR insights and recommendations
+        recommendation:
+          type: string
+          description: Primary recommendation (e.g. Promotion Ready, Needs Improvement)
+        topFactors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeatureImportance"
+          description: Top contributing factors to the prediction
+      required:
+        - performanceScore
+        - performanceCategory
+        - confidence
+        - insights
+        - recommendation
+        - topFactors
+
+    FeatureImportance:
+      type: object
+      properties:
+        feature:
+          type: string
+        importance:
+          type: number
+        direction:
+          type: string
+          enum: [positive, negative, neutral]
+      required:
+        - feature
+        - importance
+        - direction
+
+    AnalyticsData:
+      type: object
+      properties:
+        distribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionEntry"
+        totalPredictions:
+          type: number
+        averageScore:
+          type: number
+        highPerformers:
+          type: number
+        mediumPerformers:
+          type: number
+        lowPerformers:
+          type: number
+      required:
+        - distribution
+        - totalPredictions
+        - averageScore
+        - highPerformers
+        - mediumPerformers
+        - lowPerformers
+
+    DistributionEntry:
+      type: object
+      properties:
+        category:
+          type: string
+        count:
+          type: number
+        percentage:
+          type: number
+        color:
+          type: string
+      required:
+        - category
+        - count
+        - percentage
+        - color
+
+    PredictionHistoryList:
+      type: object
+      properties:
+        predictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PredictionHistoryItem"
+        total:
+          type: number
+      required:
+        - predictions
+        - total
+
+    PredictionHistoryItem:
+      type: object
+      properties:
+        id:
+          type: number
+        createdAt:
+          type: string
+        performanceScore:
+          type: number
+        performanceCategory:
+          type: string
+        age:
+          type: number
+        yearsAtCompany:
+          type: number
+        satisfactionScore:
+          type: number
+        recommendation:
+          type: string
+      required:
+        - id
+        - createdAt
+        - performanceScore
+        - performanceCategory
+        - age
+        - yearsAtCompany
+        - satisfactionScore
+        - recommendation
+
+    WorkforceInsights:
+      type: object
+      properties:
+        promotionReadyCount:
+          type: number
+        needsImprovementCount:
+          type: number
+        averageSatisfaction:
+          type: number
+        averageTrainingHours:
+          type: number
+        topRecommendation:
+          type: string
+        riskAlerts:
+          type: array
+          items:
+            type: string
+        keyMetrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeyMetric"
+      required:
+        - promotionReadyCount
+        - needsImprovementCount
+        - averageSatisfaction
+        - averageTrainingHours
+        - topRecommendation
+        - riskAlerts
+        - keyMetrics
+
+    KeyMetric:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        trend:
+          type: string
+          enum: [up, down, stable]
+      required:
+        - label
+        - value
+        - trend
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+      required:
+        - error
