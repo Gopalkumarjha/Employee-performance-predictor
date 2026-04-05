@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import multer from "multer";
 import {
   PredictPerformanceBody,
   PredictPerformanceResponse,
@@ -8,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const ML_BASE = `http://localhost:${process.env.ML_PORT ?? 5001}`;
 
@@ -49,6 +51,29 @@ router.post("/predict", async (req, res): Promise<void> => {
 
   const result = PredictPerformanceResponse.parse(mlResult);
   res.json(result);
+});
+
+router.post("/upload", upload.single("file"), async (req, res): Promise<void> => {
+  if (!req.file) {
+    res.status(400).json({ error: "No file uploaded" });
+    return;
+  }
+
+  const form = new FormData();
+  const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "text/csv" });
+  form.append("file", blob, req.file.originalname);
+
+  const mlUrl = `${ML_BASE}/ml/upload`;
+  const mlRes = await fetch(mlUrl, { method: "POST", body: form });
+
+  if (!mlRes.ok) {
+    const body = await mlRes.json().catch(() => ({ error: "ML service error" }));
+    res.status(mlRes.status).json(body);
+    return;
+  }
+
+  const data = await mlRes.json();
+  res.json(data);
 });
 
 router.get("/analytics", async (_req, res): Promise<void> => {

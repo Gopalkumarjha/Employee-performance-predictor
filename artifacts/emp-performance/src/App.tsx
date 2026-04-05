@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 import PredictPage from "@/pages/predict";
 import AnalyticsPage from "@/pages/analytics";
+import UploadPage from "@/pages/upload";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +24,7 @@ function Router() {
       <Switch>
         <Route path="/" component={PredictPage} />
         <Route path="/analytics" component={AnalyticsPage} />
+        <Route path="/upload" component={UploadPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

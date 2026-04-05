@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Activity, BarChart3, Menu, BrainCircuit } from "lucide-react";
+import { Activity, BarChart3, Menu, BrainCircuit, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -11,6 +11,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/", label: "Predict", icon: BrainCircuit },
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/upload", label: "Batch Upload", icon: Upload },
   ];
 
   const NavLinks = () => (

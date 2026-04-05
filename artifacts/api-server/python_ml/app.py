@@ -297,6 +297,101 @@ def workforce_insights():
     })
 
 
+@app.route('/ml/upload', methods=['POST'])
+def upload_csv():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if not file.filename or not file.filename.endswith('.csv'):
+        return jsonify({'error': 'File must be a .csv'}), 400
+
+    try:
+        df = pd.read_csv(file)
+    except Exception as e:
+        return jsonify({'error': f'Failed to parse CSV: {str(e)}'}), 400
+
+    required_cols = {'age', 'years_at_company', 'training_hours', 'projects_handled',
+                     'work_hours', 'overtime_hours', 'satisfaction_score', 'salary'}
+    missing = required_cols - set(df.columns.str.strip().str.lower())
+    if missing:
+        return jsonify({'error': f'Missing columns: {", ".join(sorted(missing))}'}), 400
+
+    df.columns = df.columns.str.strip().str.lower()
+    results = []
+    success_count = 0
+
+    for idx, row in df.iterrows():
+        row_num = int(idx) + 1
+        try:
+            features = pd.DataFrame([[
+                float(row['age']),
+                float(row['years_at_company']),
+                float(row['training_hours']),
+                float(row['projects_handled']),
+                float(row['work_hours']),
+                float(row['overtime_hours']),
+                float(row['satisfaction_score']),
+                float(row['salary'])
+            ]], columns=FEATURE_NAMES)
+
+            features_scaled = scaler.transform(features)
+            prediction = model.predict(features_scaled)[0]
+            score = float(np.clip(prediction, 0, 100))
+
+            estimators_preds = [tree.predict(features_scaled)[0] for tree in model.estimators_]
+            std_dev = np.std(estimators_preds)
+            confidence = float(np.clip(1 - (std_dev / 50), 0.5, 0.99))
+
+            category = get_performance_category(score)
+            recommendation = get_recommendation(score, category)
+
+            import datetime
+            record = {
+                'id': next_id[0],
+                'createdAt': datetime.datetime.utcnow().isoformat() + 'Z',
+                'performanceScore': round(score, 1),
+                'performanceCategory': category,
+                'age': int(row['age']),
+                'yearsAtCompany': float(row['years_at_company']),
+                'satisfactionScore': float(row['satisfaction_score']),
+                'recommendation': recommendation
+            }
+            prediction_history.append(record)
+            next_id[0] += 1
+
+            results.append({
+                'row': row_num,
+                'age': int(row['age']),
+                'yearsAtCompany': float(row['years_at_company']),
+                'satisfactionScore': float(row['satisfaction_score']),
+                'performanceScore': round(score, 1),
+                'performanceCategory': category,
+                'confidence': round(confidence, 3),
+                'recommendation': recommendation
+            })
+            success_count += 1
+        except Exception as e:
+            results.append({
+                'row': row_num,
+                'age': int(row.get('age', 0)),
+                'yearsAtCompany': float(row.get('years_at_company', 0)),
+                'satisfactionScore': float(row.get('satisfaction_score', 0)),
+                'performanceScore': 0,
+                'performanceCategory': 'Low',
+                'confidence': 0,
+                'recommendation': 'Error',
+                'error': str(e)
+            })
+
+    return jsonify({
+        'total': len(results),
+        'success': success_count,
+        'failed': len(results) - success_count,
+        'results': results
+    })
+
+
 if __name__ == '__main__':
     load_model()
     port = int(os.environ.get('ML_PORT', 5001))
